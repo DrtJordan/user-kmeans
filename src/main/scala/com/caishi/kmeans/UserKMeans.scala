@@ -1,48 +1,59 @@
 package com.caishi.kmeans
 
 import com.caishi.model.Util
-import com.mongodb.client.model.{UpdateOptions, Filters}
-import com.mongodb.client.result.UpdateResult
-import org.apache.spark.mllib.clustering.{KMeansModel, KMeans}
+import org.apache.hadoop.fs._
+import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.{SparkContext, SparkConf}
 
 /**
+  * 根据用户画像聚合相同用户并存储hdfs
   * Created by YMY on 16-1-26.
   */
 object UserKMeans {
   def main(args: Array[String]) {
-//    if (args.length < 7) {
-//      System.err.println("Usage: GeoKMeans <hdfsDirs> <numCenter> <numIterations> <position:home or office> <mongoRemotes:ip:port,ip:port> <mongoDb> <collection>")
-//      System.exit(1)
-//    }
-//    val Array(hdfsDirs, numCenter, numIterations, position,mongoRemotes, mongoDb,collection) = args
+    if (args.length < 5) {
+      System.err.println("Usage: UserKMeans <hdfsUrl> <fromDir> <toDir> <numCenter> <numIterations>")
+      System.exit(1)
+    }
+    val Array(hdfsUrl,fromDir, toDir, numCenter,numIterations) = args
 
-        val hdfsDirs ="hdfs://10.4.1.4:9000/test/newbak.json"
-        val numCenter = 11
-        val numIterations = 10
-    //    val position="office"
-    //    val mongoRemotes="10.1.1.134:27017"
-    //    val mongoDb = "mydb"
-    //    val collection ="test"
-    //    val conf = new SparkConf().setAppName("mllib-geo").setMaster("local[2]")
-    val conf = new SparkConf().setAppName("mllib-geo").setMaster("local")
+//    val hdfsUrl ="hdfs://10.4.1.4:9000"
+//    val fromDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_catLike.json"
+//    val toDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_group"
+//    val numCenter = 11
+//    val numIterations = 10
+    val conf = new SparkConf()
 
     conf.set("spark.driver.allowMultipleContexts","true")
     val sc = new SparkContext(conf)
 
     //装载数据
-    val data = sc.textFile(hdfsDirs.toString)
+    val data = sc.textFile(fromDir.toString)
     val cachedData = data.map(line => Util.jsonToObject(line)).cache()
     val parsedData = cachedData.map(p => {
       val x = p.values().toArray()(0).toString.replace("[","").replace("]","").split(",").map(_.toDouble)
-//      println(p.keySet().iterator().next()+"   "+x.size)
       Vectors.dense(x)
     })
-    val model = KMeans.train(parsedData,numCenter, numIterations)
+    val model = KMeans.train(parsedData,numCenter.toInt, numIterations.toInt)
     val userGroups = cachedData.map(item => {
-      item.keySet().iterator().next()+","+model.predict(Vectors.dense(item.values().toArray()(0).toString.replace("[","").replace("]","").split(",").map(_.toDouble)))
+      item.keySet().iterator().next()+","+model.predict(Vectors.dense(item.values().toArray()(0).toString.replace("[","").replace("]","").split(",").map(_.toDouble)))+","+System.currentTimeMillis()
     })
-    userGroups.saveAsTextFile("file:///opt/work/test/")
+
+    sc.hadoopConfiguration.set("fs.defaultFS",hdfsUrl)
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    fs.delete(new Path(toDir),true)
+    userGroups.saveAsTextFile(toDir)
+
+  }
+
+
+  /** 删除原始小文件 */
+  def del(toDir : String,fs : FileSystem): Unit ={
+
+    val files : Array[Path] = FileUtil.stat2Paths(fs.listStatus(new Path(toDir)))
+    for(f : Path <- files){
+      fs.delete(f,true)// 迭代删除文件或目录
+    }
   }
 }
