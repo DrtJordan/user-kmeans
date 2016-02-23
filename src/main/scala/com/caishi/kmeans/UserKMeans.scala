@@ -30,6 +30,7 @@ object UserKMeans {
 
     //装载数据
     val data = sc.textFile(fromDir.toString)
+    // 读取用户画像数据并平铺200个列
     val cachedData = data.map(line => Util.jsonToObject(line)).cache()
     val parsedData = cachedData.map(p => {
       val x = p.values().toArray()(0).toString.replace("[","").replace("]","").split(",").map(_.toDouble)
@@ -43,6 +44,7 @@ object UserKMeans {
     sc.hadoopConfiguration.set("fs.defaultFS",hdfsUrl)
     val fs = FileSystem.get(sc.hadoopConfiguration)
     fs.delete(new Path(toDir),true)
+
     userGroups.saveAsTextFile(toDir)
 
   }
