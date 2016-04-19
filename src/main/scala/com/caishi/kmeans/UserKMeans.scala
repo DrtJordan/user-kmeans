@@ -26,18 +26,18 @@ object UserKMeans {
 
 //    val appName = "test"
 //    val hdfsUrl ="hdfs://10.4.1.4:9000"
-//    val userProfilesDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_catLike.json"
+//    val userProfilesDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_catLike.json.bak"
 //    val toDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_group"
-//    val common_eventDir = "hdfs://10.4.1.4:9000/logdata/2016/03/01/topic_common_event/15"
-//    val numCenter = 11
+//    val common_eventDir = "hdfs://10.4.1.4:9000/logdata/2016/04/13/topic_common_event/18"
+//    val numCenter = 100
 //    val numIterations = 10
-
+//
 //    val redisHost = "10.10.42.20:6380"
 //    val redisAuth = "9icaishi"
 
 //    val redisHost = "10.1.1.122:6385"
 //    val redisAuth = "9icaishi"
-//
+
 //    val dataKey="UserCF"
 
     val conf = new SparkConf().setAppName(appName)
@@ -73,28 +73,31 @@ object UserKMeans {
     // 将用户分组后的数据注册为临时表
     val ug = userGroups.map(item => item.split(",")).map(p => UG(p(0),p(1).toInt)).toDF()
     ug.registerTempTable("usergroup")
+//    var center = "";
+//    val x = userGroups.filter(_.split(",")(0)=="cae3572873941b09a2fee007c26b79d9").take(1).map((item)=>{center=item.split(",")(1); 1})
+//    sqlContext.sql("select * from usergroup where center='"+center+"'").show(1000,false)
+
     // 将用户浏览记录和用户组进行联合查询，并注册新表（spark sql目前不支持嵌套查询）
-    val center_news_table = sqlContext.sql("select nt.newsId as newsId, ug.center as center,count(1) as callcount,nt.newsType as newsType from newsTable as nt  join usergroup as ug on ug.userId=nt.userId group by center,newsId,newsType")
+    val center_news_table = sqlContext.sql("select nt.newsId as newsId, ug.center as center,count(1) as callcount,nt.newsType as newsType from newsTable as nt left join usergroup as ug on ug.userId=nt.userId group by center,newsId,newsType")
     center_news_table.registerTempTable("center_news_table")
-    val user_center_news_table = sqlContext.sql("select ug.userId,cnt.* from usergroup as ug right outer join center_news_table as cnt on ug.center=cnt.center")
+    val user_center_news_table = sqlContext.sql("select ug.userId,cnt.* from usergroup as ug left outer join center_news_table as cnt on ug.center=cnt.center")
     user_center_news_table.registerTempTable("user_center_news_table")
     val result = sqlContext.sql("select ucnt.*, nt.* from user_center_news_table as ucnt left join newsTable as nt on ucnt.userId=nt.userId and ucnt.newsId=nt.newsId where nt.newsId is null ")
 
 
     //    val joinTable = newsTable.where(newsTable("newsType")==="NEWS").join(ug.select(ug("userId"),ug("center")),newsTable("userId")=== ug("newsId"),"left")
-    center_news_table.show(20,false)
-    user_center_news_table.show(200,false)
-    result.show(100,false)
+//    center_news_table.show(20,false)
+//    user_center_news_table.show(200,false)
+//    result.show(100,false)
     result.map(row => row.get(0)->row.get(1)).reduceByKey(_+","+_).foreachPartition(items =>{
 //      val pool = createRedisPool(redisHost,redisPort.toInt,redisAuth)
       val jedis = RedisUtil.getRedisPool(redisHost,redisAuth).getResource
 //      jedis.select(redisDBIndex.toInt)
       items.foreach(item =>{
-//        println(item)
         // jedis累加数值
         //        jedis.hincrBy(clickHashKey, uid, clickCount)
         jedis.set(dataKey+"_"+item._1.toString,item._2.toString)
-//        // 设置过期时间
+        // 设置过期时间
         jedis.expire(dataKey+"_"+item._1.toString,1*60*60)
       })
       jedis.close()
