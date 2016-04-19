@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON
 import com.caishi.model.{RedisUtil, Util}
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig
 import org.apache.hadoop.fs._
+import org.apache.log4j.Logger
 import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
@@ -17,9 +18,10 @@ import redis.clients.jedis.JedisPool
 case class News(userId:String,newsId :String,newsType : String )
 case class UG(userId:String,center:Int)
 object UserKMeans {
+  val logger = Logger.getLogger("UserKMeans")
   def main(args: Array[String]) {
     if (args.length < 10) {
-      System.err.println("Usage: UserKMeans <hdfsUrl> <fromDir> <toDir> <numCenter> <numIterations>")
+      logger.error("Usage: UserKMeans <hdfsUrl> <fromDir> <toDir> <numCenter> <numIterations>")
       System.exit(1)
     }
     val Array(appName,hdfsUrl,userProfilesDir,common_eventDir, toDir, numCenter,numIterations,redisHost,redisAuth,dataKey) = args
