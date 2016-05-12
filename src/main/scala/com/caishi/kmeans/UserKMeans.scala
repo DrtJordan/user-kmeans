@@ -27,18 +27,18 @@ object UserKMeans {
     val Array(appName,hdfsUrl,userProfilesDir,common_eventDir, toDir, numCenter,numIterations,redisHost,redisAuth,dataKey) = args
 
 //    val appName = "test"
-//    val hdfsUrl ="hdfs://10.4.1.4:9000"
-//    val userProfilesDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_catLike.json.bak"
-//    val toDir ="hdfs://10.4.1.4:9000/hivedata/profiles/user_group"
-//    val common_eventDir = "hdfs://10.4.1.4:9000/logdata/2016/04/13/topic_common_event/18"
+//    val hdfsUrl ="hdfs://host:9000"
+//    val userProfilesDir ="hdfs://host:9000/hivedata/profiles/user_catLike.json.bak"
+//    val toDir ="hdfs://host:9000/hivedata/profiles/user_group"
+//    val common_eventDir = "hdfs://host:9000/logdata/2016/04/13/topic_common_event/18"
 //    val numCenter = 100
 //    val numIterations = 10
 //
-//    val redisHost = "10.10.42.20:6380"
-//    val redisAuth = "9icaishi"
+//    val redisHost = "host:6380"
+//    val redisAuth = "xxx"
 
-//    val redisHost = "10.1.1.122:6385"
-//    val redisAuth = "9icaishi"
+//    val redisHost = "host:6385"
+//    val redisAuth = "cs"
 
 //    val dataKey="UserCF"
 
